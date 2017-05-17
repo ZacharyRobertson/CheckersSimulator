@@ -6,6 +6,7 @@ using UnityEngine;
 public class PieceData
 {
     public int gridX, gridZ;
+    
     public PieceData()
     {
         gridX = 0;
@@ -20,28 +21,29 @@ public class PieceData
 public class Piece : MonoBehaviour
 {
     public PieceData pieceData = new PieceData();
+    private int x, z;
     public int gridX
     {
         get
         {
-            return gridX;
+            return x;
         }
         set
         {
             pieceData.gridX = value;
-            gridX = value;
+            x = value;
         }
     }
     public int gridZ
     {
         get
         {
-            return gridZ;
+            return z;
         }
         set
         {
             pieceData.gridZ = value;
-            gridZ = value;
+            z = value;
         }
     }
 }
