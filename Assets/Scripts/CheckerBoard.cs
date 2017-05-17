@@ -2,10 +2,38 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+using System.Xml;
+using System.Xml.Serialization;
+using System.IO;
+
+[XmlRoot("CheckerBoardData")]
+public class CheckerBoardData
+{
+    [XmlArray("Pieces")]
+    [XmlArrayItem("Piece")]
+    public PieceData[] pieces;
+    public void Save(string path)
+    {
+        var serialzer = new XmlSerializer(typeof(CheckerBoardData));
+        using (var stream = new FileStream(path, FileMode.Create))
+        {
+            serialzer.Serialize(stream, this);
+        }
+    }
+    public static CheckerBoardData Load(string path)
+    {
+        var serializer = new XmlSerializer(typeof(CheckerBoardData));
+        using (var stream = new FileStream(path, FileMode.Open))
+        {
+            return serializer.Deserialize(stream) as CheckerBoardData;
+        }
+    }
+}
 public class CheckerBoard : MonoBehaviour
 {
     public GameObject blackPiece;
     public GameObject whitePiece;
+    public string fileName;
 
     public int boardX = 8, boardZ = 8;
     public float pieceRadius = 0.5f;
@@ -14,6 +42,7 @@ public class CheckerBoard : MonoBehaviour
     private int halfBoardX, halfBoardZ;
     private float pieceDiameter;
     private Vector3 bottomLeft;
+    private CheckerBoardData data;
 
     void Start()
     {
@@ -21,8 +50,12 @@ public class CheckerBoard : MonoBehaviour
         halfBoardX = boardX / 2;
         halfBoardZ = boardZ / 2;
         pieceDiameter = pieceRadius * 2;
-        bottomLeft = /*transform.position*/ - Vector3.right * halfBoardX - Vector3.forward * halfBoardZ;
+        bottomLeft = /*transform.position*/ -Vector3.right * halfBoardX - Vector3.forward * halfBoardZ;
+        string path = Application.persistentDataPath + "/" + fileName;
+        //data = CheckerBoardData.Load(path);
         CreateGrid();
+        data = new CheckerBoardData();
+        data.Save(path);
     }
     void CreateGrid()
     {
@@ -48,9 +81,9 @@ public class CheckerBoard : MonoBehaviour
 
         #region Generate Black Pieces
         //Loop through board columns and skip 2 each time
-        for (int x = 0; x < boardX; x+= 2)
+        for (int x = 0; x < boardX; x += 2)
         {
-            for (int z = boardZ-3; z < boardZ; z++)
+            for (int z = boardZ - 3; z < boardZ; z++)
             {
                 //Check even row
                 bool evenRow = z % 2 == 0;
@@ -71,7 +104,7 @@ public class CheckerBoard : MonoBehaviour
         // Get the piece component from clone
         Piece piece = clone.GetComponent<Piece>();
         // Place the piece
-        PlacePiece(piece,x,z);
+        PlacePiece(piece, x, z);
     }
     void PlacePiece(Piece piece, int x, int z)
     {
@@ -85,6 +118,76 @@ public class CheckerBoard : MonoBehaviour
         piece.transform.position = bottomLeft + Vector3.right * xOffset + Vector3.forward * zOffset;
         // Set pieces in array slot
         pieces[x, z] = piece;
+    }
+
+    public void PlacePiece(Piece piece, Vector3 position)
+    {
+        // Translate position to coordinate in array
+        float percentX = (position.x + halfBoardX) / boardX;
+        float percentZ = (position.z + halfBoardZ) / boardZ;
+
+        percentX = Mathf.Clamp01(percentX);
+        percentZ = Mathf.Clamp01(percentZ);
+
+        int x = Mathf.RoundToInt((boardX - 1) * percentX);
+        int z = Mathf.RoundToInt((boardZ - 1) * percentZ);
+
+        if (IsValid(x, z))
+        {
+            // Get oldPiece from that coordinate
+            Piece oldPiece = pieces[x, z];
+            // If there is an oldPiece in the slot currently
+            if (oldPiece != null)
+            {
+                // Swap the Pieces
+                SwapPieces(piece, oldPiece);
+            }
+            else
+            {
+                // Place the piece
+                int oldX = piece.gridX;
+                int oldZ = piece.gridZ;
+                pieces[oldX, oldZ] = null;
+                PlacePiece(piece, x, z);
+            }
+        }
+        else
+        {
+            int oldX = piece.gridX;
+            int oldZ = piece.gridZ;
+            PlacePiece(piece, oldX, oldZ);
+        }
+
+    }
+
+    void SwapPieces(Piece pieceA, Piece pieceB)
+    {
+        // Check if pieceA or pieceB is null
+        if (pieceA == null || pieceB == null)
+            return;
+        // return (Exit the function)
+
+        // pieceA Grid position
+        int pAX = pieceA.gridX;
+        int pAZ = pieceA.gridZ;
+
+        // pieceB Grid position
+        int pBX = pieceB.gridX;
+        int pBZ = pieceB.gridZ;
+
+        // Swap pieces
+        PlacePiece(pieceA, pBX, pBZ);
+        PlacePiece(pieceB, pAX, pAZ);
+    }
+
+    bool IsValid(int x, int z)
+    {
+        //Check even row and column
+        bool evenRow = z % 2 == 0;
+        bool evenColumn = x % 2 == 0;
+        bool oddRow = z % 2 == 1;
+        bool oddColumn = x % 2 == 1;
+        return (evenRow && evenColumn) || (oddRow && oddColumn);
     }
     void Update()
     {

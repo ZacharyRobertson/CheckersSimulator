@@ -11,6 +11,7 @@ public class PiecePicker : MonoBehaviour
 
     private Piece selectedPiece;
     private CheckerBoard board;
+    private Vector3 hitPoint;
 
 
     void Start()
@@ -42,13 +43,24 @@ public class PiecePicker : MonoBehaviour
                 // Move the piece to position
                 Vector3 piecePos = hit.point + Vector3.up * pieceHeight;
                 selectedPiece.transform.position = piecePos;
+                hitPoint = hit.point;
             }
-
+            // Check if mouse button was released
+            if(Input.GetMouseButtonUp(0))
+            {
+                // Move piece to hit point
+                Piece piece = selectedPiece.GetComponent<Piece>();
+                board.PlacePiece(piece, hitPoint);
+                // Deselect the piece
+                selectedPiece = null;
+            }
         }
 
     }
     void CheckSelection()
     {
+        if (selectedPiece != null)
+            return;
         // Create a ray from Camera mouse position to world
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         GizmosGL.AddLine(ray.origin, ray.origin + ray.direction * rayDistance, 0.1f, 0.1f, Color.red, Color.blue);
